@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, Smile } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -11,8 +11,11 @@ const Chatbot = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showReactionPicker, setShowReactionPicker] = useState(null);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+
+  const reactionEmojis = ['👍', '❤️', '😂', '😮', '😢', '😡', '👏', '🎉', '🔥', '💯'];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,6 +57,7 @@ const Chatbot = () => {
         text: response,
         sender: 'bot',
         timestamp: new Date(),
+        reactions: {},
       };
 
       setMessages(prev => [...prev, botMessage]);
@@ -63,6 +67,29 @@ const Chatbot = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleReaction = (messageId, emoji) => {
+    setMessages(prev => prev.map(message => {
+      if (message.id === messageId) {
+        const currentReactions = message.reactions || {};
+        const currentCount = currentReactions[emoji] || 0;
+        
+        return {
+          ...message,
+          reactions: {
+            ...currentReactions,
+            [emoji]: currentCount + 1
+          }
+        };
+      }
+      return message;
+    }));
+    setShowReactionPicker(null);
+  };
+
+  const toggleReactionPicker = (messageId) => {
+    setShowReactionPicker(showReactionPicker === messageId ? null : messageId);
   };
 
   const simulateBotResponse = async (message) => {
@@ -207,6 +234,41 @@ For now, try asking me about:
               <div className="message-time">
                 {formatTime(message.timestamp)}
               </div>
+              
+              {/* Reactions for bot messages */}
+              {message.sender === 'bot' && (
+                <div className="message-reactions">
+                  {message.reactions && Object.keys(message.reactions).length > 0 && (
+                    <div className="reactions-display">
+                      {Object.entries(message.reactions).map(([emoji, count]) => (
+                        <span key={emoji} className="reaction-badge">
+                          {emoji} {count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <button 
+                    className="reaction-button"
+                    onClick={() => toggleReactionPicker(message.id)}
+                  >
+                    <Smile size={16} />
+                  </button>
+                  
+                  {showReactionPicker === message.id && (
+                    <div className="reaction-picker">
+                      {reactionEmojis.map((emoji) => (
+                        <button
+                          key={emoji}
+                          className="reaction-option"
+                          onClick={() => handleReaction(message.id, emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}
